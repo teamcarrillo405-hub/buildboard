@@ -7,11 +7,15 @@ test.describe('Homepage', () => {
     await page.waitForTimeout(2000); // Allow React to hydrate
   });
 
+  test('page title contains "BuildBoard"', async ({ page }) => {
+    await expect(page).toHaveTitle(/BuildBoard/i, { timeout: 8000 });
+  });
+
   test('page title and nav logo are visible', async ({ page }) => {
     await expect(page.locator('nav')).toBeVisible();
     // HCC logo or BUILDBOARD text should be in nav
     const nav = page.locator('nav');
-    await expect(nav).toContainText('BUILDBOARD');
+    await expect(nav).toContainText('BuildBoard');
   });
 
   test('hero banner renders with headline', async ({ page }) => {
