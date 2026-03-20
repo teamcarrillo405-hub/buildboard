@@ -37,3 +37,4 @@ enrich_continuous.sh
 # Docs/planning
 docs/superpowers/
 data/csv_lists/
+package-lock.json
