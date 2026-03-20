@@ -1,19 +1,23 @@
 #!/bin/bash
 DB_PATH="./server/constructflix.db"
+DB_GZ="/tmp/constructflix.db.gz"
 
 if [ ! -f "$DB_PATH" ]; then
-  echo "Database not found — attempting download from gofile.io..."
+  echo "Database not found — downloading from GitHub releases..."
   curl -L \
-    -H "Cookie: accountToken=RBScJ2slRiJWgAKpoAuarGdNF1GFoG0G" \
-    "https://store-na-phx-1.gofile.io/download/direct/138c0077-caa7-407f-938d-2e751f007eec/constructflix.db" \
-    -o "$DB_PATH"
+    "https://github.com/teamcarrillo405-hub/buildboard/releases/download/db-v1/constructflix.db.gz" \
+    -o "$DB_GZ"
 
-  # Validate it's actually a SQLite file (starts with "SQLite format 3")
+  echo "Decompressing..."
+  gunzip -c "$DB_GZ" > "$DB_PATH"
+  rm -f "$DB_GZ"
+
+  # Validate it's actually a SQLite file
   if ! head -c 16 "$DB_PATH" | grep -q "SQLite format"; then
-    echo "Download failed or returned invalid file — starting with empty database."
+    echo "Download failed or invalid — starting with empty database."
     rm -f "$DB_PATH"
   else
-    echo "Database downloaded successfully ($(du -sh $DB_PATH | cut -f1))"
+    echo "Database ready ($(du -sh $DB_PATH | cut -f1))"
   fi
 else
   echo "Database present ($(du -sh $DB_PATH | cut -f1)) — skipping download."
