@@ -14,6 +14,7 @@ export interface SearchFilters {
   services?: string[];  // Service keywords
   licenseOnly?: boolean; // Only show contractors with active license
   realOnly?: boolean;    // Only show real Yelp listings (dataSource='yelp')
+  sort?: string;         // Sort order (e.g. 'name_asc')
   // Geographic radius filtering -- resolved by the route before calling ftsSearch
   nearbyZips?: string[];  // Array of ZIP codes within the requested radius
   searchLat?: number;     // Center latitude (for reference / future use)
@@ -206,7 +207,7 @@ export function ftsSearch(
 ): SearchResult {
   const start = performance.now();
 
-  const { query, category, state, city, minRating, services, licenseOnly, realOnly, nearbyZips } = filters;
+  const { query, category, state, city, minRating, services, licenseOnly, realOnly, nearbyZips, sort } = filters;
 
   // Build FTS5 MATCH expression: incorporate text query AND column-specific
   // filters (category, state, city) directly into the FTS5 query for speed.
@@ -220,13 +221,17 @@ export function ftsSearch(
   // Add column-scoped FTS terms for structured filters that map to FTS columns
   if (category) ftsTerms.push(`category:${JSON.stringify(category)}`);
   if (state) ftsTerms.push(`state:${JSON.stringify(state.toUpperCase())}`);
-  if (city) ftsTerms.push(`city:${JSON.stringify(city)}`);
 
   const hasFtsQuery = ftsTerms.length > 0;
 
   // Build SQL WHERE conditions for non-FTS filters only
   const whereConditions: string[] = [];
   const params: Record<string, string | number> = {};
+
+  if (city) {
+    whereConditions.push(`UPPER(c.city) = UPPER(@city)`);
+    params.city = city;
+  }
 
   if (minRating) {
     whereConditions.push(`c.rating >= @minRating`);
@@ -265,6 +270,8 @@ export function ftsSearch(
 
   let querySql: string;
   let countSql: string;
+
+  params.rawQuery = query || '';
 
   if (hasFtsQuery) {
     // FTS5 MATCH handles text + location/category filters; SQL WHERE handles rating/services
@@ -310,7 +317,7 @@ export function ftsSearch(
       FROM companies_fts
       JOIN companies c ON c.rowid = companies_fts.rowid
       WHERE companies_fts MATCH @ftsQuery ${extraWhere}
-      ORDER BY boostedRank
+      ${sort === 'name_asc' ? 'ORDER BY c.businessName ASC' : `ORDER BY CASE WHEN UPPER(c.businessName) = UPPER(@rawQuery) THEN 0.001 ELSE 1.0 END * boostedRank`}
       LIMIT @limit OFFSET @offset
     `;
 

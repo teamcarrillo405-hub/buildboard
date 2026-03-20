@@ -41,10 +41,11 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-async function fetchAutocomplete(q: string): Promise<AutocompleteSuggestion[]> {
+async function fetchAutocomplete(q: string, loc = ''): Promise<AutocompleteSuggestion[]> {
   if (q.trim().length < 2) return [];
   try {
-    const res = await fetch(`${API_BASE}/api/autocomplete?q=${encodeURIComponent(q)}&limit=8`);
+    const locParam = loc.trim() ? `&loc=${encodeURIComponent(loc.trim())}` : '';
+    const res = await fetch(`${API_BASE}/api/autocomplete?q=${encodeURIComponent(q)}&limit=8${locParam}`);
     if (!res.ok) return [];
     const data = await res.json() as { suggestions: AutocompleteSuggestion[] };
     return data.suggestions ?? [];
@@ -76,6 +77,7 @@ const Navigation: React.FC<NavigationProps> = () => {
   const { openGuidedSearch } = useGuidedSearch();
 
   const debouncedQuery = useDebounce(searchQuery, 200);
+  const debouncedLocation = useDebounce(locationQuery, 200);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -100,12 +102,12 @@ const Navigation: React.FC<NavigationProps> = () => {
       setShowDropdown(false);
       return;
     }
-    fetchAutocomplete(debouncedQuery).then(results => {
+    fetchAutocomplete(debouncedQuery, debouncedLocation).then(results => {
       setSuggestions(results);
       setShowDropdown(results.length > 0);
       setActiveIndex(-1);
     });
-  }, [debouncedQuery]);
+  }, [debouncedQuery, debouncedLocation]);
 
   // Close dropdown on outside click
   useEffect(() => {

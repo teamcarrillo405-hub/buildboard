@@ -157,7 +157,7 @@ const SearchResults: React.FC = () => {
     if (urlMinRating) {
       setSidebarFilters(prev => ({ ...prev, minRating: parseFloat(urlMinRating) }));
     }
-  }, []); // Only on mount
+  }, [urlQuery, urlLoc]);
 
   // ────── AI Search: when user submits a query ──────
   // Also called on mount (via the effect below) to extract structured filters from the URL query
@@ -220,7 +220,7 @@ const SearchResults: React.FC = () => {
       const message = q && loc ? `${q} near ${loc}` : q || loc;
       runAISearch(message);
     }
-  }, []); // intentionally run once on mount only
+  }, [urlQuery, urlLoc]); // re-run when URL query/loc changes (nav bar search)
 
   // ────── FTS Search: fetch results whenever filters change ──────
   useEffect(() => {
@@ -236,7 +236,7 @@ const SearchResults: React.FC = () => {
 
     // Include radiusMiles, features and realOnly in the key so changing sidebar
     // filters triggers a new fetch (they're not directly in mergedFilters).
-    const filterKey = JSON.stringify({ ...mergedFilters, radiusMiles: sidebarFilters.radiusMiles, features: sidebarFilters.features, realOnly: sidebarFilters.realOnly, sort, page });
+    const filterKey = JSON.stringify({ ...mergedFilters, urlQuery, urlLoc, radiusMiles: sidebarFilters.radiusMiles, features: sidebarFilters.features, realOnly: sidebarFilters.realOnly, sort, page });
     if (filterKey === lastSearchRef.current) return;
     if (!mergedFilters.query && !mergedFilters.category && !mergedFilters.state && !mergedFilters.city && !mergedFilters.minRating) {
       // No filters at all — don't search
@@ -268,7 +268,7 @@ const SearchResults: React.FC = () => {
         setTotalPages(0);
       })
       .finally(() => setIsLoading(false));
-  }, [activeFilters, sidebarFilters, sort, page]);
+  }, [activeFilters, sidebarFilters, sort, page, urlQuery, urlLoc]);
 
   // ────── URL sync helpers ──────
   const syncFiltersToURL = useCallback((filters: AISearchFilters) => {

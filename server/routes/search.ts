@@ -25,6 +25,15 @@ interface SearchArea {
   centerLng: number;
 }
 
+function parseLoc(raw: string): { city: string; state?: string } {
+  const cleaned = raw.trim().replace(/,\s*$/, '').replace(/,$/, '');
+  const stateMatch = cleaned.match(/^(.*?)[\s,]+([A-Z]{2})$/i);
+  if (stateMatch) {
+    return { city: stateMatch[1].trim(), state: stateMatch[2].toUpperCase() };
+  }
+  return { city: cleaned };
+}
+
 function resolveNearbyZips(
   zip: string,
   radiusMiles: number,
@@ -86,7 +95,9 @@ router.get('/search', async (req, res, next) => {
 
     // If a non-ZIP loc was provided and we don't have an explicit state/city,
     // treat it as a city hint.
-    const effectiveCity = city || (!effectiveZip && loc ? loc.trim() : undefined);
+    const parsedLoc = !effectiveZip && loc ? parseLoc(loc.trim()) : null;
+    const effectiveCity = city || parsedLoc?.city;
+    const effectiveState = state || parsedLoc?.state;
 
     if (!q.trim() && !category && !state && !effectiveCity && !nearbyZips) {
       return res.json({ companies: [], totalResults: 0, searchTime: 0, suggestions: [], source: 'none' });
@@ -103,7 +114,7 @@ router.get('/search', async (req, res, next) => {
       const filters: SearchFilters = {
         query: q.trim() || undefined,
         category: resolvedCategory || undefined,
-        state: state || undefined,
+        state: effectiveState || undefined,
         city: effectiveCity || undefined,
         minRating: minRating ? parseFloat(minRating) : undefined,
         licenseOnly: licenseOnly === 'true' || undefined,
@@ -112,6 +123,7 @@ router.get('/search', async (req, res, next) => {
         searchLat: searchArea?.centerLat,
         searchLng: searchArea?.centerLng,
         radiusMiles: searchArea?.radiusMiles,
+        sort: sort || undefined,
       };
 
       const result = ftsSearch(filters, lim, off);
@@ -206,7 +218,7 @@ router.get('/search', async (req, res, next) => {
 // Returns business names and category suggestions.
 // ---------------------------------------------------------------------------
 router.get('/autocomplete', (req, res) => {
-  const { q = '', limit = '8' } = req.query as Record<string, string>;
+  const { q = '', limit = '8', loc: autoLoc = '' } = req.query as Record<string, string>;
   const trimmed = q.trim();
 
   if (trimmed.length < 2) {
@@ -225,16 +237,21 @@ router.get('/autocomplete', (req, res) => {
     const lastToken = tokens[tokens.length - 1]; // already ends with *
     const prefixQuery = lastToken;
 
+    const parsedAutoLoc = autoLoc.trim() ? parseLoc(autoLoc.trim()) : null;
+    const autoLocWhere = parsedAutoLoc
+      ? `AND (UPPER(c.city) = UPPER(@autoCity) OR UPPER(c.state) = UPPER(@autoState))`
+      : '';
+
     let businessRows: { businessName: string; city: string; state: string; id: string }[] = [];
     if (isFtsReady()) {
       businessRows = sqlite.prepare(`
         SELECT c.id, c.businessName, c.city, c.state
         FROM companies_fts
         JOIN companies c ON c.rowid = companies_fts.rowid
-        WHERE companies_fts MATCH @q
+        WHERE companies_fts MATCH @q ${autoLocWhere}
         ORDER BY rank
         LIMIT @lim
-      `).all({ q: prefixQuery, lim }) as typeof businessRows;
+      `).all({ q: prefixQuery, lim, autoCity: parsedAutoLoc?.city ?? '', autoState: parsedAutoLoc?.state ?? '' }) as typeof businessRows;
     }
 
     // Category suggestions: match category names by prefix
