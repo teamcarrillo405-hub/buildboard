@@ -1,0 +1,39 @@
+node_modules/
+dist/
+.env
+.env.local
+*.db
+*.db-wal
+*.db-shm
+output/
+.superpowers/
+.vercel/
+server/data/zipCache.json
+server.log
+.firecrawl/
+state_import_*.txt
+server.err
+*.log
+server_*.log
+server_*.txt
+start-server.ps1
+.claude/
+tests/screenshots/
+
+# Enrichment scripts output / progress
+logs/
+server/logs/
+
+# Test screenshots and temp images
+*.png
+*.jpg
+*.jpeg
+
+# One-off utility scripts
+add_enrich_rank.mjs
+enrich_status.mjs
+enrich_continuous.sh
+
+# Docs/planning
+docs/superpowers/
+data/csv_lists/

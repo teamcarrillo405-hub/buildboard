@@ -1,0 +1,78 @@
+# Requirements: BuildBoard — v2.0 Data Enrichment Pipeline
+
+**Defined:** 2026-03-18
+**Core Value:** Every construction company in the database has complete, verified contact info — website, email, and phone — so the platform is genuinely useful to anyone looking to reach contractors.
+
+## v2.0 Requirements
+
+### Website Discovery
+
+- [x] **WEB-01**: Pipeline generates up to 24 candidate domain URLs from business name + city + state for companies without a website
+- [x] **WEB-02**: Each candidate URL is DNS-checked and HTTP-verified (not parked, returns 2xx/3xx, not a directory site) before being saved
+- [x] **WEB-03**: Page title is checked to confirm it belongs to the right business (>=50% name token overlap) before saving the URL to the DB
+- [x] **WEB-04**: Verified website URL is written directly to `companies.website` in constructflix.db
+
+### Email & Phone Extraction
+
+- [x] **CONT-01**: Playwright browser navigates verified company websites to extract email addresses from homepage HTML
+- [x] **CONT-02**: Playwright navigates to `/contact`, `/contact-us`, and similar pages to find emails not on the homepage
+- [x] **CONT-03**: Scraper detects when a page is JS-rendered, blocked, or has no contact link and moves on without crashing
+- [x] **CONT-04**: Extracted email is written directly to `companies.email` in constructflix.db
+- [x] **CONT-05**: Phone numbers found on company websites fill `companies.phone` only when the field is currently empty
+
+### Yelp Pipeline
+
+- [x] **YELP-01**: Yelp enrichment runs daily respecting the 5,000 call/day limit, resuming from last processed rowid
+- [x] **YELP-02**: Yelp pipeline prioritizes companies missing phone or image, skipping already-enriched records
+
+### Orchestration
+
+- [x] **ORCH-01**: A single orchestrator script runs both Yelp and web enrichment pipelines on a daily schedule
+- [x] **ORCH-02**: Each pipeline persists progress to a JSON file — safe to kill and resume at any point
+- [x] **ORCH-03**: Orchestrator logs a daily summary: companies processed, fields filled, errors, API calls used
+
+## Future Requirements
+
+### Advanced Enrichment
+
+- **ADV-01**: Email extraction from obfuscated mailto links and JS-rendered contact forms
+- **ADV-02**: LinkedIn profile discovery for company owners/contacts
+- **ADV-03**: BBB/Angi cross-reference for companies with no discoverable website
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Manual review before DB write | User preference — direct writes only |
+| Staging/export files | Not needed — direct to DB |
+| Social media profile enrichment | Separate project/session |
+| Image scraping from company websites | 99.2% failure rate documented in v1.0 |
+| Email validation/deliverability checks | Out of scope for ingestion phase |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| WEB-01 | Phase 3 | Complete |
+| WEB-02 | Phase 3 | Complete |
+| WEB-03 | Phase 3 | Complete |
+| WEB-04 | Phase 3 | Complete |
+| YELP-01 | Phase 3 | Complete |
+| YELP-02 | Phase 3 | Complete |
+| CONT-01 | Phase 4 | Complete |
+| CONT-02 | Phase 4 | Complete |
+| CONT-03 | Phase 4 | Complete |
+| CONT-04 | Phase 4 | Complete |
+| CONT-05 | Phase 4 | Complete |
+| ORCH-01 | Phase 5 | Complete |
+| ORCH-02 | Phase 5 | Complete |
+| ORCH-03 | Phase 5 | Complete |
+
+**Coverage:**
+- v2.0 requirements: 14 total
+- Mapped to phases: 14
+- Unmapped: 0
+
+---
+*Requirements defined: 2026-03-18*
+*Last updated: 2026-03-18 — traceability finalized with v2.0 roadmap (Phases 3-5)*
